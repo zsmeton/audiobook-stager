@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audiobook Stager</title>
+  <link rel="stylesheet" href="/static/style.css?v=155" />
+</head>
+<body>
+  <main id="appMain" class="app-main">
+  <header>
+    <h1>Audiobook Stager</h1>
+    <p class="subtitle">Scan seeds, verify metadata, hardlink to <code>Author/Series/Title/</code> layout</p>
+  </header>
+
+  <section class="toolbar">
+    <button id="scanBtn" class="primary">Start Scan</button>
+    <button id="settingsBtn" class="toolbar-icon" type="button" title="Auto-stage settings" aria-label="Auto-stage settings">⚙</button>
+  </section>
+
+  <section id="stats" class="stats"></section>
+
+  <div class="sections-stack">
+  <section class="page-section section-away" id="awaySection">
+    <div class="section-header">
+      <button type="button" class="section-header-toggle" aria-expanded="true" aria-controls="awayContent" aria-label="Toggle While you were away section">
+        <span class="section-header-main">
+          <span class="section-icon" aria-hidden="true">
+            <svg class="section-icon-graphic section-icon-default" viewBox="0 0 24 24"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>
+            <svg class="section-icon-graphic section-icon-chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </span>
+          <span class="section-header-text">
+            <h2>While you were away <span class="section-count" id="awayCount" data-count="0"></span></h2>
+            <p class="section-note">Books auto-staged since your last visit. Mark okay or revert if something looks wrong.</p>
+          </span>
+        </span>
+      </button>
+      <div class="section-header-actions">
+        <button id="dismissAllAwayBtn" type="button" class="hidden icon-action icon-action-okay away-okay-all-btn">
+          <svg class="icon-action-svg" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M6.2 11.2 3.4 8.4a.75.75 0 0 0-1.06 1.06l3.25 3.25a.75.75 0 0 0 1.08-.02l7.2-8.2a.75.75 0 1 0-1.13-.98L6.2 11.2z"/></svg>
+          Okay all
+        </button>
+      </div>
+    </div>
+    <div class="section-body" id="awayContent">
+      <p class="section-empty-state" id="awayEmpty">Nothing happened while you were away.</p>
+      <div id="awayListWrap" class="book-list-wrap book-list-wrap--away hidden">
+        <div class="book-item book-item__head" aria-hidden="true">
+          <div class="book-item__path">Source path</div>
+          <div class="book-item__meta">Book</div>
+          <div class="book-item__conf">Conf</div>
+          <div class="book-item__staged">Staged at</div>
+          <div class="book-item__when">When</div>
+          <div class="book-item__actions col-actions-head">Actions</div>
+        </div>
+        <div id="awayList" class="book-list book-list--away" role="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section section-conflicts" id="conflictsSection">
+    <div class="section-header">
+      <button type="button" class="section-header-toggle" aria-expanded="true" aria-controls="conflictsContent" aria-label="Toggle Conflicts section">
+        <span class="section-header-main">
+          <span class="section-icon" aria-hidden="true">
+            <svg class="section-icon-graphic section-icon-default" viewBox="0 0 24 24"><path fill="currentColor" d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+            <svg class="section-icon-graphic section-icon-chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </span>
+          <span class="section-header-text">
+            <h2>Conflicts <span class="section-count" id="conflictsCount" data-count="0"></span></h2>
+            <p class="section-note">Resolve target collisions or combine split audiobook parts at the same library path.</p>
+          </span>
+        </span>
+      </button>
+    </div>
+    <div class="section-body" id="conflictsContent">
+      <p class="section-empty-state" id="conflictsEmpty">No conflicts.</p>
+      <div id="conflictsListWrap" class="book-list-wrap book-list-wrap--conflicts hidden">
+        <div class="book-item book-item__head" aria-hidden="true">
+          <div class="book-item__meta">Book</div>
+          <div class="book-item__sides">Sides</div>
+          <div class="book-item__kind">Kind</div>
+          <div class="book-item__status">Status</div>
+          <div class="book-item__actions col-actions-head">Actions</div>
+        </div>
+        <div id="conflictsList" class="book-list book-list--conflicts" role="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section section-partial" id="partialSection">
+    <div class="section-header">
+      <button type="button" class="section-header-toggle" aria-expanded="true" aria-controls="partialContent" aria-label="Toggle Partial staged section">
+        <span class="section-header-main">
+          <span class="section-icon" aria-hidden="true">
+            <svg class="section-icon-graphic section-icon-default" viewBox="0 0 24 24"><path fill="currentColor" d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14zm-7-2h2V7h-4v2h2v8z"/></svg>
+            <svg class="section-icon-graphic section-icon-chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </span>
+          <span class="section-header-text">
+            <h2>Partial staged <span class="section-count" id="partialCount" data-count="0"></span></h2>
+            <p class="section-note">Some files already hardlinked — open Detail to see which files need linking or review extras.</p>
+          </span>
+        </span>
+      </button>
+    </div>
+    <div class="section-body" id="partialContent">
+      <p class="section-empty-state" id="partialEmpty">No partially staged books.</p>
+      <div id="partialListWrap" class="book-list-wrap book-list-wrap--partial hidden">
+        <div class="book-item book-item__head" aria-hidden="true">
+          <div class="book-item__path">Source path</div>
+          <div class="book-item__files">Files</div>
+          <div class="book-item__linked">Linked</div>
+          <div class="book-item__meta">Book</div>
+          <div class="book-item__status">Status</div>
+          <div class="book-item__actions col-actions-head">Actions</div>
+        </div>
+        <div id="partialList" class="book-list book-list--partial" role="list"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page-section section-staging" id="stagingSection">
+    <div class="section-header section-header--staging">
+      <button type="button" class="section-header-toggle" aria-expanded="true" aria-controls="stagingContent" aria-label="Toggle Staging section">
+        <span class="section-header-main">
+          <span class="section-icon" aria-hidden="true">
+            <svg class="section-icon-graphic section-icon-default" viewBox="0 0 24 24"><path fill="currentColor" d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"/></svg>
+            <svg class="section-icon-graphic section-icon-chevron" viewBox="0 0 24 24"><path fill="currentColor" d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>
+          </span>
+          <span class="section-header-text">
+            <h2>Staging <span class="section-count" id="stagingCount" data-count="0"></span></h2>
+            <p class="section-note">Review and act on books by status (excludes conflicts).</p>
+          </span>
+        </span>
+      </button>
+    </div>
+    <div class="staging-toolbar">
+      <label>
+        Filter
+        <select id="statusFilter">
+          <option value="pending" selected>Pending</option>
+          <option value="staged">Staged</option>
+          <option value="skipped">Skipped</option>
+        </select>
+      </label>
+      <label>
+        Search
+        <input id="searchBox" type="search" placeholder="title, author, series, path..." />
+      </label>
+      <label class="staging-sort-mobile">
+        Sort
+        <select id="stagingSortSelect">
+          <option value="source_path:asc">Path (A→Z)</option>
+          <option value="source_path:desc">Path (Z→A)</option>
+          <option value="metadata:asc">Book (A→Z)</option>
+          <option value="metadata:desc">Book (Z→A)</option>
+          <option value="confidence:asc">Confidence (low→high)</option>
+          <option value="confidence:desc">Confidence (high→low)</option>
+        </select>
+      </label>
+      <button type="button" id="stagingBulkBtn" disabled>Approve Selected</button>
+    </div>
+    <div class="section-body" id="stagingContent">
+      <p class="section-empty-state" id="stagingEmpty">All books staged.</p>
+      <div id="booksListWrap" class="book-list-wrap book-list-wrap--staging hidden">
+        <div class="book-item book-item__head" role="row">
+          <div class="book-item__check" role="columnheader"><input type="checkbox" id="selectAll" aria-label="Select all" /></div>
+          <div class="book-item__path book-item__sort" role="columnheader" data-sort="source_path">
+            <button type="button" class="book-item__sort-btn">Source path</button>
+          </div>
+          <div class="book-item__files" role="columnheader">Files</div>
+          <div class="book-item__meta book-item__sort" role="columnheader" data-sort="metadata">
+            <button type="button" class="book-item__sort-btn">Book</button>
+          </div>
+          <div class="book-item__conf book-item__sort" role="columnheader" data-sort="confidence">
+            <button type="button" class="book-item__sort-btn">Conf</button>
+          </div>
+          <div class="book-item__status" role="columnheader">Status</div>
+          <div class="book-item__actions col-actions-head" role="columnheader">Actions</div>
+        </div>
+        <div id="booksList" class="book-list book-list--staging" role="list"></div>
+      </div>
+    </div>
+  </section>
+  </div>
+  </main>
+
+  <div id="mobileBulkBar" class="mobile-bulk-bar hidden" aria-live="polite">
+    <span id="mobileBulkCount" class="mobile-bulk-count"></span>
+    <button type="button" id="mobileBulkBtn" class="primary" disabled>Approve Selected</button>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <div id="bootstrapScrim" class="bootstrap-scrim hidden" aria-live="polite">
+    <div class="bootstrap-scrim-panel">
+      <div id="bootstrapSpinner" class="bootstrap-scrim-spinner hidden" aria-hidden="true"></div>
+      <h2 id="bootstrapTitle" class="bootstrap-scrim-title"></h2>
+      <p id="bootstrapMessage" class="bootstrap-scrim-message"></p>
+      <div id="bootstrapProviders" class="bootstrap-providers hidden">
+        <h3 class="bootstrap-providers-title">Metadata providers</h3>
+        <div id="bootstrapProviderList" class="provider-list" role="list"></div>
+      </div>
+      <div id="bootstrapStackWrap" class="bootstrap-stack-wrap hidden">
+        <div id="bootstrapStackViz" class="stack-viz">
+          <canvas id="bootstrapStackCanvas" class="stack-viz-canvas"></canvas>
+        </div>
+        <div id="bootstrapScanLabel" class="bootstrap-scan-label"></div>
+      </div>
+      <button type="button" id="bootstrapCancelBtn" class="bootstrap-cancel-btn hidden">Cancel scan</button>
+      <button type="button" id="bootstrapActionBtn" class="primary hidden"></button>
+    </div>
+  </div>
+
+  <div id="stagingScrim" class="staging-scrim hidden" aria-hidden="true" aria-live="polite">
+    <div class="staging-scrim-panel">
+      <div class="staging-scrim-spinner" aria-hidden="true"></div>
+      <p id="stagingScrimMessage">Staging…</p>
+    </div>
+  </div>
+
+  <dialog id="detailDialog">
+    <form method="dialog" id="detailForm">
+      <h2>Book detail</h2>
+      <div id="detailToast" class="detail-toast hidden" role="alert" aria-live="assertive"></div>
+      <div id="detailContent"></div>
+      <div class="dialog-actions">
+        <button type="button" id="detailLookup">Re-lookup</button>
+        <button type="submit">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm">
+      <h2>Settings</h2>
+      <div id="settingsPanel" class="resolve-panel resolve-panel--tabbed">
+        <div class="resolve-tabstrip" role="tablist" aria-label="Settings sections">
+          <button type="button" class="resolve-tab resolve-tab--primary is-active" role="tab" data-settings-tab="general" aria-selected="true" tabindex="0">General</button>
+          <button type="button" class="resolve-tab resolve-tab--secondary" role="tab" data-settings-tab="metadata" aria-selected="false" tabindex="-1">Metadata</button>
+        </div>
+        <div class="resolve-tabpanel resolve-tabpanel--tabbed" role="tabpanel">
+          <div id="settingsContent" class="resolve-tabpanel-body resolve-tabpanel-body--merge">
+        <div id="settingsTabGeneral" class="settings-tabpanel is-active" data-settings-tab="general">
+        <section class="settings-section">
+          <h3 class="settings-section-title">Auto-stage</h3>
+          <label class="settings-row settings-row-check">
+            <input type="checkbox" id="settingsEnabled" />
+            <span>Enable scheduled auto-scan and stage</span>
+          </label>
+          <label class="settings-row">
+            Interval (hours)
+            <input type="number" id="settingsInterval" min="0.25" step="0.25" value="2" />
+          </label>
+          <label class="settings-row">
+            Min confidence
+            <input type="number" id="settingsConfidence" min="0" max="1" step="0.01" value="0.9" />
+          </label>
+          <label class="settings-row">
+            Activity lock timeout (minutes)
+            <input type="number" id="settingsLockTimeout" min="1" step="1" value="15" />
+          </label>
+          <p class="settings-note">Scheduled runs are skipped while you are actively using the stager (lock renews on approve, skip, edit, scan, etc.).</p>
+          <div class="settings-last-run" id="settingsLastRun">Last run: —</div>
+          <div class="settings-actions">
+            <button type="button" id="settingsRunNowBtn">Run auto-scan+stage now</button>
+          </div>
+        </section>
+        <section class="settings-section">
+          <h3 class="settings-section-title">Interface</h3>
+          <label class="settings-row settings-row-check">
+            <input type="checkbox" id="settingsFinishScanAnimation" checked />
+            <span>Finish scan animation</span>
+          </label>
+          <p class="settings-note">When finish scan animation is on, the scan screen stays visible for one poll cycle after completion.</p>
+        </section>
+        </div>
+        <div id="settingsTabMetadata" class="settings-tabpanel hidden" data-settings-tab="metadata">
+          <section class="settings-section">
+            <h3 class="settings-section-title">Lookup</h3>
+            <label class="settings-row settings-row-check">
+              <input type="checkbox" id="settingsScanManualHints" />
+              <span>Use manual author/title as lookup hints during scan</span>
+            </label>
+            <p class="settings-note">When enabled, books with manual author/title use those values for provider search on scan. When disabled, scan uses file tags and folder names only. Per-book Re-lookup always uses the detail fields.</p>
+            <label class="settings-row settings-row-check">
+              <input type="checkbox" id="settingsLviSearch" checked />
+              <span>Use library vocabulary for search</span>
+            </label>
+            <label class="settings-row settings-row-check">
+              <input type="checkbox" id="settingsLviBoost" checked />
+              <span>Use library vocabulary for candidate ranking</span>
+            </label>
+            <p class="settings-note">LVI uses staged library folder names. Gold text marks author or series that exactly match a staged path segment (staging list, edit fields, and candidates).</p>
+            <div class="settings-actions">
+              <button type="button" id="settingsClearCacheBtn" class="settings-secondary-btn">Clear metadata cache</button>
+            </div>
+          </section>
+          <section class="settings-section">
+            <h3 class="settings-section-title">Title extraction</h3>
+            <p class="settings-note">How the stager picks a search title from your files. Applies on scan or Re-lookup.</p>
+            <fieldset class="title-extraction-modes">
+              <label class="settings-row settings-row-check" title="Uses album tag first, then title tag, then filename, then folder name.">
+                <input type="radio" name="titleExtractionMode" value="conservative" />
+                <span><strong>Conservative</strong> — album, then title, then file, then folder</span>
+              </label>
+              <label class="settings-row settings-row-check" title="Compares tags and paths to find the best shared title. Recommended for most libraries.">
+                <input type="radio" name="titleExtractionMode" value="balanced" checked />
+                <span><strong>Balanced</strong> — smart match across tags and paths (default)</span>
+              </label>
+              <label class="settings-row settings-row-check" title="Like Balanced, but you choose which cleanup steps run before and after matching.">
+                <input type="radio" name="titleExtractionMode" value="advanced" />
+                <span><strong>Advanced</strong> — pick your own cleanup steps</span>
+              </label>
+            </fieldset>
+            <div id="titleExtractionAdvancedPanel" class="title-extraction-advanced hidden">
+              <table id="titleCleanupStepsTable" class="title-cleanup-steps-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Action</th>
+                    <th scope="col" class="title-cleanup-phase-col" title="Cleanup applied to each hint before matching">Pre</th>
+                    <th scope="col" class="title-cleanup-phase-col" title="Cleanup applied to the chosen title after matching">Post</th>
+                  </tr>
+                </thead>
+                <tbody id="titleCleanupStepsBody"></tbody>
+              </table>
+              <div class="settings-actions">
+                <button type="button" id="titleExtractionPreviewBtn" class="settings-secondary-btn" title="Preview on 10 random books">Refresh preview</button>
+              </div>
+              <div id="titleExtractionPreviewWrap" class="title-extraction-preview-wrap">
+                <table id="titleExtractionPreviewTable" class="title-extraction-preview-table">
+                  <thead>
+                    <tr>
+                      <th>Book</th>
+                      <th>Before</th>
+                      <th>After</th>
+                    </tr>
+                  </thead>
+                  <tbody id="titleExtractionPreviewBody"></tbody>
+                </table>
+                <p id="titleExtractionPreviewEmpty" class="settings-note hidden">No pending or staged books to preview.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" id="settingsSaveBtn">Save settings</button>
+        <button type="submit">Close</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="confirmDialog">
+    <form method="dialog" id="confirmForm">
+      <h2 id="confirmTitle">Confirm</h2>
+      <p id="confirmMessage" class="confirm-message"></p>
+      <label id="confirmDontAgainLabel" class="confirm-dont-again hidden">
+        Don't show this again
+        <input type="checkbox" id="confirmDontAgain" />
+      </label>
+      <div class="dialog-actions confirm-dialog-actions">
+        <button type="button" id="confirmCancelBtn">Cancel</button>
+        <button type="button" id="confirmOkBtn" class="primary">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="conflictDialog">
+    <form method="dialog" id="conflictForm">
+      <h2 id="conflictDialogTitle">Resolve</h2>
+      <div id="conflictDialogContent"></div>
+      <div class="dialog-actions conflict-dialog-actions">
+        <button type="button" id="conflictSaveAllBtn">Save all edits</button>
+        <div id="conflictApprovePreview" class="conflict-approve-preview hidden" aria-live="polite"></div>
+        <div id="mergeApprovePreview" class="conflict-approve-preview hidden" aria-live="polite"></div>
+        <div class="conflict-dialog-actions-right">
+          <button type="button" id="conflictNextBtn" class="hidden">Next conflict</button>
+          <button type="button" id="conflictApproveBtn">Select</button>
+          <button type="button" id="mergeApproveBtn" class="primary hidden">Merge &amp; stage</button>
+          <button type="submit">Close</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js?v=155"></script>
+</body>
+</html>

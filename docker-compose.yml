@@ -1,0 +1,37 @@
+# Standalone Audiobook Stager. Seedbox deployments build this repo from outside.
+# Copy .env.example to .env and set DATA_ROOT before the first start.
+
+name: audiobook-stager
+
+services:
+  audiobook-stager:
+    build: .
+    container_name: audiobook-stager
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-America/Denver}
+      BOOKS_ROOT: ${BOOKS_ROOT:-/data/Dropbox/Books}
+      AUDIOBOOKS_ROOT: ${AUDIOBOOKS_ROOT:-/data/Audiobooks}
+      STAGER_CONFIG_ROOT: /config
+      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
+      METADATA_CONTACT_EMAIL: ${METADATA_CONTACT_EMAIL:-}
+      AUDNEXUS_MIN_INTERVAL_MS: ${AUDNEXUS_MIN_INTERVAL_MS:-500}
+      OPENLIBRARY_MIN_INTERVAL_MS: ${OPENLIBRARY_MIN_INTERVAL_MS:-1000}
+      AUDNEXUS_REGION: ${AUDNEXUS_REGION:-us}
+      STAGER_MAM_ID: ${STAGER_MAM_ID:-}
+      MAM_REQUESTS_PER_MINUTE: ${MAM_REQUESTS_PER_MINUTE:-120}
+    ports:
+      - "${AUDIOBOOK_STAGER_PORT:-9570}:8000"
+    volumes:
+      - type: bind
+        source: ${DATA_ROOT:-./data}
+        target: /data
+      - type: bind
+        source: ${STAGER_CONFIG_HOST:-./config}
+        target: /config
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
