@@ -25,8 +25,8 @@ def test_h_lvi_gold_chrome_on_detail(scanned_page, stager_server):
         None,
     )
     assert three, staging
-    page.locator(f'.book-item[data-book-id="{three["id"]}"] button[data-action="approve"]').click()
-    expect(page.locator(f'.book-item[data-book-id="{three["id"]}"]')).to_be_hidden(timeout=30_000)
+    page.locator(f'.staging-row[data-book-id="{three["id"]}"] button[data-action="approve"]').click()
+    expect(page.locator(f'.staging-row[data-book-id="{three["id"]}"]')).to_be_hidden(timeout=30_000)
 
     # Rescan so Dark Forest lookup uses LVI built from the staged row.
     page.locator("#scanBtn").click()
@@ -36,7 +36,7 @@ def test_h_lvi_gold_chrome_on_detail(scanned_page, stager_server):
     action.click()
     wait_scan_idle(base)
     expect(page.locator("#bootstrapScrim")).to_be_hidden(timeout=60_000)
-    page.goto(base + "/")
+    page.goto(stager_server["ui_url"] + "/")
     page.wait_for_load_state("networkidle")
 
     staging = list_books(base, partitioned="true").get("staging") or []
@@ -51,7 +51,7 @@ def test_h_lvi_gold_chrome_on_detail(scanned_page, stager_server):
     )
     assert dark, staging
 
-    page.locator(f'.book-item[data-book-id="{dark["id"]}"] button[data-action="detail"]').click()
+    page.locator(f'.staging-row[data-book-id="{dark["id"]}"] button[data-action="detail"]').click()
     dialog = page.locator("#detailDialog")
     expect(dialog).to_be_visible()
     chrome = dialog.locator(".metadata-field--lvi-match, input.field-lvi-match")

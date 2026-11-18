@@ -26,13 +26,63 @@ def _env_configured(env_key: str | None) -> bool:
     return bool(os.environ.get(env_key, "").strip())
 
 
+def empty_key_blocks(provider_id: str, credential: str | None = None) -> bool:
+    """True when a requires_key provider has no credential and must not be called.
+
+    Keyless providers are never blocked. A blank contact email is not a credential.
+    """
+    spec = next((item for item in PROVIDER_DEFS if item["id"] == provider_id), None)
+    if spec is None or not spec.get("requires_key"):
+        return False
+    if credential is None:
+        env_key = spec.get("env_key")
+        if not env_key:
+            return True
+        return not _env_configured(env_key)
+    return not str(credential).strip()
+
+
+_INSTANCE_CREDENTIAL_ATTR = {
+    "google_books": "google_api_key",
+    "mam": "mam_id",
+}
+
+
+def _call_credential(provider_id: str, providers: Any, credential: str | None) -> str | None:
+    if credential is not None:
+        return credential
+    attr = _INSTANCE_CREDENTIAL_ATTR.get(provider_id)
+    if providers is not None and attr is not None:
+        if hasattr(providers, attr):
+            value = getattr(providers, attr)
+            return "" if value is None else str(value)
+        return ""
+    return None
+
+
+def invoke_provider(
+    provider_id: str,
+    fn: Any,
+    /,
+    *args: Any,
+    providers: Any = None,
+    credential: str | None = None,
+    **kwargs: Any,
+) -> Any:
+    """Call ``fn`` unless D02 skips this provider for an empty credential."""
+    secret = _call_credential(provider_id, providers, credential)
+    if empty_key_blocks(provider_id, secret):
+        return []
+    return fn(*args, **kwargs)
+
+
 def list_provider_status() -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for spec in PROVIDER_DEFS:
         env_key = spec.get("env_key")
         configured = _env_configured(env_key)
         requires_key = bool(spec.get("requires_key"))
-        enabled = configured if requires_key else True
+        enabled = not empty_key_blocks(spec["id"])
         items.append(
             {
                 "id": spec["id"],
@@ -50,7 +100,7 @@ def probe_provider(providers: Any, provider_id: str) -> dict[str, Any]:
     if spec is None:
         return {"id": provider_id, "status": "error", "http_status": None, "message": "unknown provider"}
 
-    if spec.get("requires_key") and not _env_configured(spec.get("env_key")):
+    if empty_key_blocks(provider_id):
         return {
             "id": provider_id,
             "status": "skipped",

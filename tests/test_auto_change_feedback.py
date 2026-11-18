@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from app.activity_lock import renew_activity_lock
+import app.main
 from app.api import AutoDismissBody, dismiss_auto_review, get_auto_feedback, holder, revert_book
 from app.db import _utcnow, connect, record_auto_change_feedback
 from app.scan import ScanManager

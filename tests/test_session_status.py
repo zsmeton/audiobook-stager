@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import app.main
 from app.api import get_session_status, holder
 from app.db import _utcnow, connect, update_session_meta
 from app.scan import ScanManager

@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audiobook-stager"
+version = "0.1.136"
+description = "Scan audiobook seeds and hardlink approved books into an Author/Series/Title library."
+readme = "README.md"
+license = "GPL-3.0-only"
+requires-python = ">=3.12"
+license-files = ["LICENSE"]
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "mutagen>=1.47.0",
+    "apscheduler>=3.10.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+]
+e2e = [
+    "pytest>=8.0.0",
+    "pytest-playwright>=0.5.0",
+    "playwright>=1.40.0",
+    "httpx>=0.27.0",
+]
+
+# Pytest options stay in pytest.ini, including the addopts that exclude e2e.
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*", "stager_core*"]
+namespaces = true

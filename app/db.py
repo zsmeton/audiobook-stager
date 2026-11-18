@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS api_cache (
 
 CREATE INDEX IF NOT EXISTS idx_books_status ON books(status);
 CREATE INDEX IF NOT EXISTS idx_books_scan ON books(scan_id);
+CREATE INDEX IF NOT EXISTS idx_books_source_path ON books(source_path);
 
 CREATE TABLE IF NOT EXISTS conflict_resolutions (
     target_key TEXT PRIMARY KEY,
@@ -386,6 +387,9 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             """
         )
     _repair_false_chosen_pins(conn)
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_books_source_path ON books(source_path)"
+    )
     tables = {
         row[0]
         for row in conn.execute(

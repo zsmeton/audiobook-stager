@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import app.main
 from app.api import approve_book, holder
 from app.auto import AutoRunManager
 from app.db import _utcnow, connect

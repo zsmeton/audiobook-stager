@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta, timezone
 
-from app.db import _utcnow, ensure_auto_defaults, get_auto_settings
+from app.db import DB_LOCK, _utcnow, ensure_auto_defaults, get_auto_settings
 
 
 def _parse_iso(value: str) -> datetime:
@@ -11,26 +11,27 @@ def _parse_iso(value: str) -> datetime:
 
 
 def renew_activity_lock(conn: sqlite3.Connection, reason: str) -> dict[str, str]:
-    ensure_auto_defaults(conn)
-    settings = get_auto_settings(conn)
-    now = datetime.now(timezone.utc)
-    locked_until = now + timedelta(minutes=settings["lock_timeout_minutes"])
-    locked_until_iso = locked_until.isoformat()
-    now_iso = now.isoformat()
-    conn.execute(
-        """
-        UPDATE activity_lock
-        SET locked_until = ?, last_renewed_at = ?, last_reason = ?
-        WHERE id = 'default'
-        """,
-        (locked_until_iso, now_iso, reason),
-    )
-    conn.commit()
-    return {
-        "locked_until": locked_until_iso,
-        "last_renewed_at": now_iso,
-        "last_reason": reason,
-    }
+    with DB_LOCK:
+        ensure_auto_defaults(conn)
+        settings = get_auto_settings(conn)
+        now = datetime.now(timezone.utc)
+        locked_until = now + timedelta(minutes=settings["lock_timeout_minutes"])
+        locked_until_iso = locked_until.isoformat()
+        now_iso = now.isoformat()
+        conn.execute(
+            """
+            UPDATE activity_lock
+            SET locked_until = ?, last_renewed_at = ?, last_reason = ?
+            WHERE id = 'default'
+            """,
+            (locked_until_iso, now_iso, reason),
+        )
+        conn.commit()
+        return {
+            "locked_until": locked_until_iso,
+            "last_renewed_at": now_iso,
+            "last_reason": reason,
+        }
 
 
 def get_activity_lock(conn: sqlite3.Connection) -> dict[str, str | bool]:

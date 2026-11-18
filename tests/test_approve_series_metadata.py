@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import approve_book, holder
 from app.db import _utcnow, connect, row_to_book
 from app.scan import ScanManager

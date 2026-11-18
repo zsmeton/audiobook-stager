@@ -139,15 +139,6 @@ def _preclean_light(value: str) -> str:
     return light_title_cleanup(value)
 
 
-def _preclean_norm(value: str) -> str:
-    text = (value or "").strip()
-    return normalize_title(text) or text
-
-
-def _preclean_raw(value: str) -> str:
-    return (value or "").strip()
-
-
 def _title_candidates(
     book: FlatBook,
     tags: TagInfo,
@@ -209,10 +200,6 @@ def path_best_title(book: FlatBook, *, preclean: PrecleanFn = _preclean_light) -
         if candidate and _eligible(candidate):
             return candidate.strip()
     return ""
-
-
-def _postclean_norm_only(raw: str) -> str:
-    return normalize_title(raw) or raw
 
 
 def fuzzy_subset_title(

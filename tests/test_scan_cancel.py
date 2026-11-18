@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import app.main
 from app.api import cancel_scan, holder
 from app.db import connect
 from app.scan import ScanManager
@@ -67,6 +68,8 @@ class ScanCancelTests(unittest.TestCase):
             self.assertEqual(row["status"], "cancelled")
 
     def test_cancel_sets_cancelling_message_before_finish(self) -> None:
+        release = threading.Event()
+
         def slow_discover(
             _root,
             *,
@@ -77,6 +80,7 @@ class ScanCancelTests(unittest.TestCase):
         ):
             for i in range(1, 101):
                 if should_cancel and should_cancel():
+                    release.wait(timeout=3)
                     raise DiscoveryCancelled()
                 if on_progress:
                     on_progress(i)
@@ -89,6 +93,7 @@ class ScanCancelTests(unittest.TestCase):
             self.manager.cancel_scan(scan_id)
             row = self.conn.execute("SELECT message FROM scans WHERE id = ?", (scan_id,)).fetchone()
             self.assertIn("Cancelling", row["message"])
+            release.set()
             self.manager._thread.join(timeout=3)
 
     def test_cancel_during_index_phase_marks_cancelled(self) -> None:

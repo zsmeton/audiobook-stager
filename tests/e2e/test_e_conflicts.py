@@ -30,7 +30,7 @@ def _open_conflict(page):
 
 
 def _seed_radios(dialog):
-    return dialog.locator('input[type="radio"][name^="conflict-winner-"]:not([value="library"])')
+    return dialog.locator('input[type="radio"][name="conflict-winner"]:not([value="library"])')
 
 
 @pytest.mark.e2e_layout("conflict_pending")

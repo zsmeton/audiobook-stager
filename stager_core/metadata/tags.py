@@ -4,6 +4,7 @@ import os
 import re
 from pathlib import Path
 
+from stager_core.media_kind import AUDIOBOOK, get_kind
 from stager_core.metadata.types import TagInfo
 
 # Audible ASIN shape: 10 chars, leading B, plus the trailing 9 alphanumerics.
@@ -82,6 +83,10 @@ def _extract_asin_from_trusted_fields(tags: dict, comment: str) -> str:
 
 
 def read_tags(path: Path) -> TagInfo:
+    return get_kind(AUDIOBOOK).read_tags(path)
+
+
+def read_audiobook_tags(path: Path) -> TagInfo:
     try:
         from mutagen import File as MutagenFile
     except ImportError:

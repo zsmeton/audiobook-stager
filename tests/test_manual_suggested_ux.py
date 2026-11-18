@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import BookPatch, holder, patch_book
 from app.db import connect, row_to_book
 from app.session import StagingSession

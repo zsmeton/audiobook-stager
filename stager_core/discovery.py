@@ -9,10 +9,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from stager_core.fingerprint import FingerprintCache, book_id_from_fingerprints, file_fingerprint
+from stager_core.media_kind import AUDIOBOOK, get_kind
 
-AUDIO_EXT = {
-    ".mp3", ".mp4", ".m4a", ".m4b", ".flac", ".ogg", ".opus", ".wav", ".aac", ".wma",
-}
+AUDIO_EXT = get_kind(AUDIOBOOK).extensions()
 INCOMPLETE_SUFFIXES = (".part", ".!qb", ".!qB", ".crdownload", ".tmp")
 PART_RE = re.compile(
     r"^(\d{1,3}|part\s*\d+|disc\s*\d+|track\s*\d+)([\.\-_\s]|$)",
@@ -41,7 +40,7 @@ def is_incomplete(path: Path) -> bool:
 
 
 def is_audio(path: Path) -> bool:
-    return path.is_file() and path.suffix.lower() in AUDIO_EXT and not is_incomplete(path)
+    return get_kind(AUDIOBOOK).matches(path) and not is_incomplete(path)
 
 
 def looks_like_part(filename: str) -> bool:

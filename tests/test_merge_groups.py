@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import (
     ConflictApprove,
     MergeApprove,

@@ -654,10 +654,17 @@ def _assert_target_under_library(library_root: Path, target_dir: Path) -> None:
     target_resolved.relative_to(lib_resolved)
 
 
-def replace_library_target(library_root: Path, author: str, title: str) -> BookResult:
+def replace_library_target(
+    library_root: Path,
+    author: str,
+    title: str,
+    series: str = "",
+    series_index: str = "",
+) -> BookResult:
     started = time.perf_counter()
-    target_dir, author_dir, title_name = resolve_staging_target(library_root, author, title)
-    rel_target = f"{author_dir}/{title_name}"
+    rel_target = compute_target_key(author, title, series, series_index)
+    author_dir, _, title_name = rel_target.partition("/")
+    target_dir = library_root.joinpath(*rel_target.split("/"))
     result = BookResult(
         book_id="",
         author=author_dir,

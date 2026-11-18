@@ -1,0 +1,72 @@
+name: unit
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Reject tracked private files
+        run: |
+          python - <<'PY'
+          import subprocess
+          import sys
+
+          listed = subprocess.check_output(["git", "ls-files"], text=True)
+          tokens = ("api_key", "apikey", "secret", "credentials")
+          private_suffixes = (
+              ".env",
+              ".json",
+              ".txt",
+              ".yml",
+              ".yaml",
+              ".ini",
+              ".cfg",
+              ".conf",
+              ".pem",
+              ".key",
+              ".p12",
+              ".pfx",
+              ".xml",
+              ".toml",
+              ".properties",
+              ".secret",
+              ".credentials",
+              ".sqlite",
+              ".cookie",
+              ".cookies",
+          )
+          bad = []
+          for path in listed.splitlines():
+              name = path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+              if name == ".env" or name == "mam.cookies" or path.lower().endswith(".db"):
+                  bad.append(path)
+                  continue
+              if any(token in name for token in tokens):
+                  bare = "." not in name
+                  private = bare or any(name.endswith(suffix) for suffix in private_suffixes)
+                  if private:
+                      bad.append(path)
+          if bad:
+              print(f"Tracked private paths: {len(bad)}")
+              for path in bad:
+                  print(path)
+              sys.exit(1)
+          PY
+
+      - name: Install unit dependencies
+        run: python -m pip install -r requirements.txt "pytest>=8.0.0"
+
+      - name: Unit tests
+        run: python -m pytest --ignore=tests/e2e

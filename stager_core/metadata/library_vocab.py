@@ -324,9 +324,6 @@ class LibraryVocabulary:
                     )
         return None
 
-    def author_in_vocab(self, truth_author: str) -> bool:
-        return author_key(truth_author) in self.authors
-
     def summary(self) -> dict[str, Any]:
         n_series = sum(len(v) for v in self.series_by_author.values())
         n_aliases = sum(len(e.aliases) for e in self.authors.values())

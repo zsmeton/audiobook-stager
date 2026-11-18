@@ -20,17 +20,26 @@ Pinned empty series ⇒ `confirmed_none` (force flat `Author/Title/` with no ser
 ## Staging snapshot ≠ pin
 
 Normal **Approve** / auto-stage copies effective values into `chosen_*` but leaves
-`chosen_*_set = 0`. The detail form still shows Suggested so a later relookup can
-update suggestions. Conflict / merge approve paths currently set all `_set = 1`
-(inconsistent with normal approve).
+`chosen_*_set = 0` unless that field was already pinned. The detail form still
+shows Suggested so a later relookup can update suggestions.
+
+Conflict save-edits, conflict approve, and merge approve may also copy effective
+values into `chosen_*`. They set `chosen_*_set` only for a field the operator
+supplied, using the same rules as Save / revert. Supplying one field does not
+pin the other three. A field the operator did not supply keeps its existing flag.
 
 ## Save / revert
 
 - `PATCH` with a `chosen_*` field present marks that field Manual (`_set = 1`),
   even if the value equals suggested.
 - Revert clears `_set` so effective falls back to suggested.
-- Empty series only pins when there was a suggestion or an existing pin
-  (avoids accidental `confirmed_none`).
+- Series and series index pin when that field is supplied and the value is
+  non-empty, a suggestion exists, or the field was already pinned. An empty
+  value with neither a suggestion nor an existing pin stays unpinned (avoids
+  accidental `confirmed_none`).
+- Conflict save-edits sends author, title, series, and series index together, so
+  author and title pin, and series fields follow the empty rule above.
+- Conflict approve and merge approve pin only the fields present on the request.
 
 ## Relookup policies
 

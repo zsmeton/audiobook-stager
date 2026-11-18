@@ -31,6 +31,7 @@ from app.db import (
     update_session_meta,
     upsert_library_target,
 )
+from app.repositories.books import fetch_resolution_book_rows
 
 STALE_SCAN_HOURS = 24
 
@@ -165,11 +166,13 @@ class StagingSession:
         if conn is not None:
             self.persist_library_target(conn, target_key)
 
+    def _resolution_book_dicts(self, conn: sqlite3.Connection) -> list[dict[str, Any]]:
+        return [row_to_book(row) for row in fetch_resolution_book_rows(conn)]
+
     def refresh_conflicts(self, conn: sqlite3.Connection) -> None:
+        book_dicts = self._resolution_book_dicts(conn)
         with DB_LOCK:
-            rows = conn.execute("SELECT * FROM books ORDER BY source_path").fetchall()
             persisted = load_conflict_resolutions(conn)
-        book_dicts = [row_to_book(r) for r in rows]
         self.conflict_groups, self.conflict_ids = detect_conflict_groups(
             book_dicts,
             self.library_root,
@@ -180,9 +183,7 @@ class StagingSession:
         )
 
     def refresh_merges(self, conn: sqlite3.Connection) -> None:
-        with DB_LOCK:
-            rows = conn.execute("SELECT * FROM books ORDER BY source_path").fetchall()
-        book_dicts = [row_to_book(r) for r in rows]
+        book_dicts = self._resolution_book_dicts(conn)
         self.merge_groups, self.merge_ids = detect_merge_groups(
             book_dicts,
             self.library_root,
@@ -192,8 +193,24 @@ class StagingSession:
         )
 
     def refresh_resolution_groups(self, conn: sqlite3.Connection) -> None:
-        self.refresh_conflicts(conn)
-        self.refresh_merges(conn)
+        book_dicts = self._resolution_book_dicts(conn)
+        with DB_LOCK:
+            persisted = load_conflict_resolutions(conn)
+        self.conflict_groups, self.conflict_ids = detect_conflict_groups(
+            book_dicts,
+            self.library_root,
+            self.books_root,
+            persisted,
+            self.library_index,
+            self.inode_index,
+        )
+        self.merge_groups, self.merge_ids = detect_merge_groups(
+            book_dicts,
+            self.library_root,
+            self.books_root,
+            self.library_index,
+            self.inode_index,
+        )
 
     def get_conflicts(self) -> tuple[list[dict[str, Any]], set[str]]:
         return self.conflict_groups, self.conflict_ids

@@ -23,13 +23,13 @@ def test_k_filter_search_sort(scanned_page, stager_server):
 
     before = row_ids(staging_rows(page))
     assert len(before) == 3
-    page.locator('.book-item__head [data-sort="source_path"] .book-item__sort-btn').click()
+    page.locator('#stagingContent button[data-sort="source_path"]').click()
     expect(staging_rows(page).first).not_to_have_attribute("data-book-id", before[0], timeout=10_000)
     after = row_ids(staging_rows(page))
     assert after == list(reversed(before)), (before, after)
 
     first_id = after[0]
-    page.locator(f'.book-item[data-book-id="{first_id}"] button[data-action="skip"]').click()
+    page.locator(f'.staging-row[data-book-id="{first_id}"] button[data-action="skip"]').click()
     page.locator("#statusFilter").select_option("skipped")
     expect(staging_rows(page)).to_have_count(1, timeout=10_000)
     expect(staging_rows(page).first).to_have_attribute("data-book-id", first_id)

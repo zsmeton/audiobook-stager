@@ -48,9 +48,15 @@ def wait_scan_idle(base_url: str, *, timeout_s: float = 180.0) -> dict[str, Any]
     return wait_scan_finished(base_url, allow=("completed",), timeout_s=timeout_s)
 
 
-def dismiss_bootstrap_and_scan(page: Page, base_url: str, *, timeout_s: float = 180.0) -> None:
+def dismiss_bootstrap_and_scan(
+    page: Page,
+    base_url: str,
+    *,
+    ui_url: str | None = None,
+    timeout_s: float = 180.0,
+) -> None:
     """Drive the pre-scan / provider scrim through Start Scan and wait until idle."""
-    page.goto(base_url + "/")
+    page.goto((ui_url or base_url) + "/")
     page.wait_for_load_state("domcontentloaded")
     expect(page.locator("h1")).to_contain_text("Audiobook Stager", timeout=30_000)
 
@@ -147,11 +153,11 @@ def pending_staging(base_url: str) -> list[dict[str, Any]]:
 
 
 def staging_rows(page: Page):
-    return page.locator("#booksList .book-item[data-book-id]")
+    return page.locator("#booksList .staging-row[data-book-id]")
 
 
 def conflict_rows(page: Page):
-    return page.locator("#conflictsList .book-item[data-target-key]")
+    return page.locator("#conflictsList .group-row[data-target-key]")
 
 
 def row_ids(locator) -> list[str]:
@@ -159,7 +165,7 @@ def row_ids(locator) -> list[str]:
 
 
 def book_row(page: Page, book_id: str):
-    return page.locator(f'#booksList .book-item[data-book-id="{book_id}"]')
+    return page.locator(f'#booksList .staging-row[data-book-id="{book_id}"]')
 
 
 def select_status(page: Page, status: str) -> None:

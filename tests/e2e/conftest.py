@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -78,6 +79,70 @@ def e2e_env(tmp_path: Path, request: pytest.FixtureRequest) -> Generator[dict, N
     }
 
 
+def _wait_url(url: str, *, timeout_s: float = 60.0) -> None:
+    deadline = time.time() + timeout_s
+    last_err: Exception | None = None
+    while time.time() < deadline:
+        try:
+            resp = httpx.get(url, timeout=2.0)
+            if resp.status_code == 200:
+                return
+        except Exception as exc:  # noqa: BLE001
+            last_err = exc
+        time.sleep(0.2)
+    raise RuntimeError(f"ui not ready at {url}: {last_err}")
+
+
+def _stop_proc(proc: subprocess.Popen) -> None:
+    proc.terminate()
+    try:
+        proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=5)
+
+
+def _node_binary() -> str:
+    found = shutil.which("node")
+    if found:
+        return found
+    local = os.environ.get("LOCALAPPDATA", "")
+    helper = Path(local) / "Programs" / "cursor" / "resources" / "app" / "resources" / "helpers" / "node.exe"
+    if helper.is_file():
+        return str(helper)
+    raise RuntimeError("node is required to serve the Vue UI while static/index.html is still the home page")
+
+
+def _start_vite(api_origin: str) -> tuple[subprocess.Popen, str]:
+    """Dev server so Playwright can hit Vue before FastAPI `/` serves the build."""
+    port = _free_port()
+    ui_url = f"http://127.0.0.1:{port}"
+    env = os.environ.copy()
+    env["STAGER_API_ORIGIN"] = api_origin
+    vite_js = REPO_ROOT / "frontend" / "node_modules" / "vite" / "bin" / "vite.js"
+    proc = subprocess.Popen(
+        [
+            _node_binary(),
+            str(vite_js),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "--strictPort",
+        ],
+        cwd=str(REPO_ROOT / "frontend"),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    try:
+        _wait_url(ui_url + "/")
+    except Exception:
+        _stop_proc(proc)
+        raise
+    return proc, ui_url
+
+
 @pytest.fixture
 def stager_server(e2e_env: dict) -> Generator[dict, None, None]:
     port = _free_port()
@@ -110,34 +175,42 @@ def stager_server(e2e_env: dict) -> Generator[dict, None, None]:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+    ui_proc: subprocess.Popen | None = None
     try:
         _wait_healthy(base_url)
+        ui_url = base_url
+        # While the old page is still `/`, drive Playwright at the Vue dev server.
+        old_page = (REPO_ROOT / "static" / "index.html").is_file()
+        if old_page or os.environ.get("STAGER_E2E_VITE") == "1":
+            ui_proc, ui_url = _start_vite(base_url)
         yield {
             **e2e_env,
             "base_url": base_url,
+            "ui_url": ui_url,
             "port": port,
             "proc": proc,
         }
     finally:
-        proc.terminate()
-        try:
-            proc.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait(timeout=5)
+        if ui_proc is not None:
+            _stop_proc(ui_proc)
+        _stop_proc(proc)
 
 
 @pytest.fixture
 def scanned_page(page, stager_server: dict):
     """Browser page after a completed scan for the fixture layout."""
-    dismiss_bootstrap_and_scan(page, stager_server["base_url"])
-    page.goto(stager_server["base_url"] + "/")
+    dismiss_bootstrap_and_scan(
+        page,
+        stager_server["base_url"],
+        ui_url=stager_server["ui_url"],
+    )
+    page.goto(stager_server["ui_url"] + "/")
     page.wait_for_load_state("domcontentloaded")
     # Wait for either staging rows, conflicts, or explicit empty state (visible).
     page.locator(
-        "#booksList .book-item[data-book-id], "
-        "#conflictsList .book-item[data-target-key], "
-        "#stagingEmpty:not(.hidden), "
-        "#conflictsEmpty:not(.hidden)"
+        "#booksList .staging-row[data-book-id], "
+        "#conflictsList .group-row[data-target-key], "
+        "#stagingEmpty, "
+        "#conflictsEmpty"
     ).first.wait_for(state="visible", timeout=60_000)
     return page

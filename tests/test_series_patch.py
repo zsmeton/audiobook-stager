@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import BookPatch, TargetKeyPreviewBody, holder, patch_book, preview_book_target_key
 from app.db import connect, row_to_book
 from app.session import StagingSession

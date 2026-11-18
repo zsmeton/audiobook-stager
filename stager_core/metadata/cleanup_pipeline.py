@@ -288,28 +288,6 @@ def _guard_post_output(
     return cleaned
 
 
-def _groups_label(prefix: str, groups: frozenset[str], order: tuple[str, ...]) -> str:
-    if not groups:
-        return f"{prefix}:none"
-    parts = [g for g in order if g in groups]
-    return f"{prefix}:{'+'.join(parts)}"
-
-
-def strategy_label(
-    pre_groups: frozenset[str],
-    post_groups: frozenset[str],
-    *,
-    post_guard: bool = False,
-    name: str | None = None,
-) -> str:
-    if name:
-        return name
-    pre = _groups_label("pre", expand_step_ids(pre_groups), PRE_STEP_ORDER)
-    post = _groups_label("post", expand_step_ids(post_groups), POST_STEP_ORDER)
-    guard = "+guard" if post_guard else ""
-    return f"{pre}|{post}{guard}"
-
-
 def fuzzy_subset_with_cleanup(
     book: FlatBook,
     tags: TagInfo,
@@ -344,29 +322,6 @@ def fuzzy_subset_with_cleanup(
         preclean=preclean,
         postclean=postclean if use_post else None,
     )
-
-
-def fuzzy_subset_pre_only(
-    book: FlatBook,
-    tags: TagInfo,
-    pre_groups: frozenset[str],
-) -> str:
-    """Run fuzzy_subset with pre cleanup only; returns raw LCS consensus string."""
-    return fuzzy_subset_with_cleanup(book, tags, pre_groups, frozenset(), post_guard=False)
-
-
-def evaluate_post_on_cached_raw(
-    raw: str,
-    book: FlatBook,
-    tags: TagInfo,
-    post_groups: frozenset[str],
-    *,
-    post_guard: bool = False,
-) -> str:
-    """Apply post-LCS cleanup to a cached pre-only fuzzy result."""
-    if not post_groups and not post_guard:
-        return raw
-    return apply_post_groups(raw, book, tags, post_groups, guard=post_guard)
 
 
 def validate_step_ids(steps: list[str] | set[str]) -> frozenset[str]:

@@ -357,58 +357,8 @@ def strip_junk_subtitle_tail(title: str) -> str:
     return text
 
 
-def _album_is_series_index_only(text: str) -> bool:
-    t = (text or "").strip()
-    if not t:
-        return False
-    if re.search(r",\s*(?:book|bk\.?|vol(?:ume)?\.?)\s*#?\d", t, re.IGNORECASE):
-        return False
-    return bool(
-        re.search(r"\b(?:book|bk\.?|vol(?:ume)?\.?)\s*#?\d+\s*$", t, re.IGNORECASE)
-    )
-
-
 def strip_collection_prefix(title: str) -> str:
     return _COLLECTION_PREFIX_RE.sub("", (title or "").strip()).strip()
-
-
-def targeted_title_cleanup(
-    title: str,
-    *,
-    authors: list[str] | None = None,
-    series_names: list[str] | None = None,
-) -> str:
-    text = (title or "").strip()
-    if not text:
-        return ""
-    authors = authors or []
-    series_names = series_names or []
-
-    text = strip_collection_prefix(text)
-    text = strip_author_prefix(text, authors)
-    text = strip_by_author_suffix(text, authors)
-    text = strip_album_series_clause(text)
-    text = strip_series_book_suffix(text)
-    text = strip_series_name(text, series_names)
-    text = strip_leading_index_prefix(text)
-    text = take_after_last_dash(text)
-    text = strip_multipart_suffix(text)
-    text = strip_narrator_paren(text)
-    text = take_main_subtitle(text)
-    text = strip_junk_subtitle_tail(text)
-    return normalize_title(text) or text
-
-
-def cleanup_with_book_context(
-    title: str,
-    book: FlatBook,
-    tags: TagInfo,
-) -> str:
-    return targeted_title_cleanup(
-        title,
-        authors=author_hints(book, tags),
-        series_names=series_hints(book, tags),
-    )
 
 
 def _token_overlap(a: str, b: str) -> float:
@@ -419,26 +369,10 @@ def _token_overlap(a: str, b: str) -> float:
     return len(ta & tb) / len(ta | tb)
 
 
-def score_cleanup_candidate(candidate: str, reference: str) -> float:
-    from stager_core.metadata.normalize import is_generic_title
-
-    if not candidate or is_generic_title(candidate):
-        return 0.0
-    ref = (reference or candidate).strip()
-    score = _token_overlap(candidate, ref)
-    if ref and len(candidate) < int(0.45 * len(ref)):
-        score *= 0.5
-    return score
-
-
 def _cleanup_is_subtractive(cleaned: str, raw_norm: str) -> bool:
     tc = set(_fold(cleaned).split())
     tr = set(_fold(raw_norm).split())
     return bool(tc) and tc <= tr
-
-
-def preclean_title(title: str) -> str:
-    return light_title_cleanup(title)
 
 
 def light_title_cleanup(title: str) -> str:
@@ -450,92 +384,3 @@ def light_title_cleanup(title: str) -> str:
     text = strip_junk_subtitle_tail(text)
     text = strip_title_edges(text)
     return normalize_title(text) or text
-
-
-def post_light_cleanup(title: str, book: FlatBook, tags: TagInfo) -> str:
-    text = light_title_cleanup(title)
-    if not text:
-        return ""
-    authors = author_hints(book, tags)
-    text = strip_author_prefix(text, authors)
-    text = strip_by_author_suffix(text, authors)
-    text = strip_narrator_paren(text)
-    return normalize_title(text) or text
-
-
-def post_guarded_light_cleanup(title: str, book: FlatBook, tags: TagInfo) -> str:
-    raw = (title or "").strip()
-    if not raw:
-        return ""
-
-    stem_norm = ""
-    if book.files:
-        from stager_core.discovery import stem_base
-
-        stem_norm = light_title_cleanup(stem_base(book.files[0].name.rsplit(".", 1)[0]))
-        stem_norm = stem_norm.strip()
-
-    cleaned = post_light_cleanup(raw, book, tags)
-    raw_norm = light_title_cleanup(raw) or raw
-
-    if not cleaned:
-        return stem_norm or raw_norm
-
-    from stager_core.metadata.normalize import is_generic_title
-
-    if is_generic_title(cleaned):
-        return stem_norm or raw_norm
-
-    if _cleanup_is_subtractive(cleaned, raw_norm):
-        return cleaned
-
-    ref = stem_norm or raw_norm
-    overlap = _token_overlap(cleaned, ref)
-    if overlap < 0.25 or len(cleaned) < max(4, int(0.35 * len(raw_norm))):
-        return stem_norm or raw_norm
-
-    return cleaned
-
-
-def light_guarded_cleanup_for_book(title: str, book: FlatBook, tags: TagInfo) -> str:
-    return post_guarded_light_cleanup(title, book, tags)
-
-
-def guarded_cleanup_with_book_context(
-    title: str,
-    book: FlatBook,
-    tags: TagInfo,
-) -> str:
-    raw = (title or "").strip()
-    if not raw:
-        return ""
-
-    stem_norm = ""
-    if book.files:
-        from stager_core.discovery import stem_base
-
-        stem_norm = normalize_title(stem_base(book.files[0].name.rsplit(".", 1)[0])) or ""
-        stem_norm = stem_norm.strip()
-
-    if _album_is_series_index_only(raw) and stem_norm:
-        return stem_norm
-
-    cleaned = cleanup_with_book_context(raw, book, tags)
-    raw_norm = normalize_title(raw) or raw
-
-    if not cleaned:
-        return stem_norm or raw_norm
-
-    from stager_core.metadata.normalize import is_generic_title
-
-    if is_generic_title(cleaned):
-        return stem_norm or raw_norm
-
-    if _cleanup_is_subtractive(cleaned, raw_norm):
-        return cleaned
-
-    overlap = _token_overlap(cleaned, raw_norm)
-    if overlap < 0.25 or len(cleaned) < max(4, int(0.35 * len(raw_norm))):
-        return stem_norm or raw_norm
-
-    return cleaned

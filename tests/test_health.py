@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock
 
+import app.main
 from app.api import _aggregate_health_status, _run_health_checks, holder
 from app.db import DB_LOCK, _utcnow, connect
 from app.scan import ScanManager

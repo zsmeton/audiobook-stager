@@ -1,5 +1,5 @@
-# Standalone Audiobook Stager. Seedbox deployments build this repo from outside.
-# Copy .env.example to .env and set DATA_ROOT before the first start.
+# Standalone Audiobook Stager.
+# Copy .env.example to .env before the first start.
 
 name: audiobook-stager
 
@@ -9,9 +9,10 @@ services:
     container_name: audiobook-stager
     restart: unless-stopped
     environment:
-      TZ: ${TZ:-America/Denver}
-      BOOKS_ROOT: ${BOOKS_ROOT:-/data/Dropbox/Books}
-      AUDIOBOOKS_ROOT: ${AUDIOBOOKS_ROOT:-/data/Audiobooks}
+      TZ: ${TZ:-UTC}
+      # Host ./data/seeds and ./data/library, mounted at /data.
+      BOOKS_ROOT: ${BOOKS_ROOT:-/data/seeds}
+      AUDIOBOOKS_ROOT: ${AUDIOBOOKS_ROOT:-/data/library}
       STAGER_CONFIG_ROOT: /config
       GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY:-}
       METADATA_CONTACT_EMAIL: ${METADATA_CONTACT_EMAIL:-}
@@ -19,6 +20,7 @@ services:
       OPENLIBRARY_MIN_INTERVAL_MS: ${OPENLIBRARY_MIN_INTERVAL_MS:-1000}
       AUDNEXUS_REGION: ${AUDNEXUS_REGION:-us}
       STAGER_MAM_ID: ${STAGER_MAM_ID:-}
+      MAM_ID: ${MAM_ID:-}
       MAM_REQUESTS_PER_MINUTE: ${MAM_REQUESTS_PER_MINUTE:-120}
     ports:
       - "${AUDIOBOOK_STAGER_PORT:-9570}:8000"

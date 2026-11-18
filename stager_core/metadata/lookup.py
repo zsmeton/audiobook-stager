@@ -26,7 +26,11 @@ from stager_core.metadata.normalize import (
     normalize_author,
     normalize_title,
 )
-from stager_core.metadata.provider_registry import list_provider_status, test_all_providers
+from stager_core.metadata.provider_registry import (
+    invoke_provider,
+    list_provider_status,
+    test_all_providers,
+)
 from stager_core.metadata.providers import (
     MetadataProviders,
     persist_stager_mam_cookie,
@@ -210,11 +214,18 @@ class MetadataLookupService:
         searches: tuple[tuple[str, object], ...] = (
             ("audible", self.providers.audible_search),
             ("mam", self.providers.mam_search),
-            ("google", self.providers.google_books_search),
+            ("google_books", self.providers.google_books_search),
             ("openlibrary", self.providers.openlibrary_search),
         )
-        for _name, search in searches:
-            combined = [c for c in search(title, author) if c.title.strip()]
+        for provider_id, search in searches:
+            found = invoke_provider(
+                provider_id,
+                search,
+                title,
+                author,
+                providers=self.providers,
+            )
+            combined = [c for c in found if c.title.strip()]
             if combined:
                 add(combined)
         return pooled

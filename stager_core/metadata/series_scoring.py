@@ -173,14 +173,6 @@ class _SeriesCluster:
 
 
 
-def _cluster_key(vote: SeriesVote) -> str:
-
-    return _EMPTY_CLUSTER_KEY if not (vote.series or "").strip() else vote.series.strip()
-
-
-
-
-
 def _cluster_series(votes: list[SeriesVote]) -> list[_SeriesCluster]:
 
     ordered = sorted(

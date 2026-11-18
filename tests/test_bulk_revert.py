@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import bulk_approve, bulk_revert, holder
 from app.auto import AutoRunManager
 from app.db import _utcnow, connect

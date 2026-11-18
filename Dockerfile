@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 COPY stager_core /app/stager_core
 COPY app /app/app
 COPY static /app/static
+COPY frontend/dist /app/frontend/dist
 COPY tools /app/tools
 
 ENV PYTHONPATH=/app

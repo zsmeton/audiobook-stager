@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import app.main
 from app.api import ConflictApprove, ConflictSaveEditsBody, ConflictSeedEdit, approve_conflict, holder, save_conflict_edits
 from app.db import _utcnow, connect
 from app.scan import ScanManager

@@ -122,6 +122,50 @@ def resolve_winner_metadata(
     return author, title, series, series_index
 
 
+def _row_cell(row: Any, key: str) -> Any:
+    if isinstance(row, dict):
+        return row.get(key)
+    if key not in row.keys():
+        return None
+    return row[key]
+
+
+def pin_flags_for_operator_fields(
+    row: Any,
+    *,
+    chosen_author: str | None,
+    chosen_title: str | None,
+    chosen_series: str | None,
+    chosen_series_index: str | None,
+) -> tuple[int, int, int, int]:
+    """Pin flags for one operator edit, matching a normal field patch.
+
+    A ``None`` argument was not supplied, so that flag stays as stored.
+    Author and title pin whenever they are supplied. Series and series index
+    pin only when the supplied value is non-empty, a suggestion exists, or
+    that field is already pinned. One supplied field does not pin the others.
+    """
+    author_set = int(_row_cell(row, "chosen_author_set") or 0)
+    title_set = int(_row_cell(row, "chosen_title_set") or 0)
+    series_set = int(_row_cell(row, "chosen_series_set") or 0)
+    series_index_set = int(_row_cell(row, "chosen_series_index_set") or 0)
+    if chosen_author is not None:
+        author_set = 1
+    if chosen_title is not None:
+        title_set = 1
+    if chosen_series is not None:
+        series_value = chosen_series.strip()
+        suggested = str(_row_cell(row, "suggested_series") or "").strip()
+        if series_value or suggested or series_set:
+            series_set = 1
+    if chosen_series_index is not None:
+        index_value = chosen_series_index.strip()
+        suggested_index = str(_row_cell(row, "suggested_series_index") or "").strip()
+        if index_value or suggested_index or series_index_set:
+            series_index_set = 1
+    return author_set, title_set, series_set, series_index_set
+
+
 def book_target_key(row: dict[str, Any]) -> str:
     return target_key_preview(row)
 

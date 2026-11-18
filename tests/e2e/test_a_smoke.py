@@ -15,7 +15,7 @@ def test_a_page_loads_and_empty_scan(page, stager_server):
     health = api_get(base, "/api/health")
     assert health.get("status") in {"ok", "degraded"}
 
-    dismiss_bootstrap_and_scan(page, base)
+    dismiss_bootstrap_and_scan(page, base, ui_url=stager_server["ui_url"])
 
     # Stay on the post-scan page (empty library → needs_scan again on reload).
     expect(page.locator("h1")).to_contain_text("Audiobook Stager")
